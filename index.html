@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛰️ Real-Time Satellite Tracker | ردیاب ماهواره</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0f1729 100%);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 350px;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .stat-label {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            z-index: 100;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .filter-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+            z-index: 100;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            z-index: 200;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #satellite-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 300px;
+            z-index: 100;
+            display: none;
+        }
+
+        #satellite-info.active {
+            display: block;
+        }
+
+        .info-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .info-detail {
+            font-size: 12px;
+            margin: 5px 0;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading Satellites...</div>
+    </div>
+
+    <div id="info-panel">
+        <h1>🛰️ Satellite Tracker</h1>
+        <div class="stat">
+            <span class="stat-label">Total Satellites:</span>
+            <span class="stat-value" id="total-sats">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Active Filter:</span>
+            <span class="stat-value" id="active-filter">All</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Visible Now:</span>
+            <span class="stat-value" id="visible-sats">0</span>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button class="filter-btn active" onclick="filterSatellites('all')">🌍 All Satellites</button>
+        <button class="filter-btn" onclick="filterSatellites('commercial')">💼 Commercial</button>
+        <button class="filter-btn" onclick="filterSatellites('military')">🔒 Military</button>
+        <button class="filter-btn" onclick="filterSatellites('research')">🔬 Research</button>
+        <button class="filter-btn" onclick="filterSatellites('starlink')">⭐ Starlink</button>
+    </div>
+
+    <div id="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background: #00ff88;"></div>
+            <span>Commercial</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ff3366;"></div>
+            <span>Military</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #3366ff;"></div>
+            <span>Research</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #ffaa00;"></div>
+            <span>Communication</span>
+        </div>
+    </div>
+
+    <div id="satellite-info">
+        <div class="info-title" id="sat-name">ISS</div>
+        <div class="info-detail" id="sat-altitude">Altitude: 408 km</div>
+        <div class="info-detail" id="sat-velocity">Velocity: 7.66 km/s</div>
+        <div class="info-detail" id="sat-position">Position: Loading...</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/satellite.js@4.1.4/dist/satellite.min.js"></script>
+    
+    <script>
+        // Three.js Setup
+        let scene, camera, renderer, earth, satellites = [], currentFilter = 'all';
+        
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.z = 3;
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Earth
+            const earthGeometry = new THREE.SphereGeometry(1, 64, 64);
+            const earthTexture = createEarthTexture();
+            const earthMaterial = new THREE.MeshPhongMaterial({ 
+                map: earthTexture,
+                bumpScale: 0.05,
+                specular: new THREE.Color('#333333'),
+                shininess: 10
+            });
+            earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            scene.add(earth);
+            
+            // Atmosphere
+            const atmosphereGeometry = new THREE.SphereGeometry(1.05, 64, 64);
+            const atmosphereMaterial = new THREE.MeshPhongMaterial({
+                color: 0x4da6ff,
+                transparent: true,
+                opacity: 0.1,
+                side: THREE.BackSide
+            });
+            const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+            scene.add(atmosphere);
+            
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+            
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+            sunLight.position.set(5, 3, 5);
+            scene.add(sunLight);
+            
+            // Stars
+            createStars();
+            
+            // Load Satellites
+            loadSatellites();
+            
+            // Controls
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            renderer.domElement.addEventListener('mousedown', () => isDragging = true);
+            renderer.domElement.addEventListener('mouseup', () => isDragging = false);
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    
+                    earth.rotation.y += deltaX * 0.005;
+                    earth.rotation.x += deltaY * 0.005;
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            // Zoom
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.001;
+                camera.position.z = Math.max(1.5, Math.min(10, camera.position.z));
+            });
+            
+            window.addEventListener('resize', onWindowResize);
+            
+            animate();
+        }
+        
+        function createEarthTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            
+            // Ocean
+            ctx.fillStyle = '#0d47a1';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Continents (simplified)
+            ctx.fillStyle = '#2e7d32';
+            
+            // Africa
+            ctx.beginPath();
+            ctx.arc(1100, 600, 150, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Americas
+            ctx.beginPath();
+            ctx.arc(400, 500, 200, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Europe/Asia
+            ctx.beginPath();
+            ctx.arc(1300, 400, 250, 0, Math.PI * 2);
+            ctx.fill();
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+        
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02 });
+            
+            const starsVertices = [];
+            for (let i = 0; i < 10000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+        
+        function loadSatellites() {
+            // Sample satellite data (simulated TLE data)
+            const satelliteData = [
+                { name: 'ISS', type: 'research', color: 0x3366ff },
+                { name: 'Hubble Space Telescope', type: 'research', color: 0x3366ff },
+                { name: 'GPS-IIF-12', type: 'commercial', color: 0x00ff88 },
+                { name: 'Starlink-1007', type: 'starlink', color: 0xffaa00 },
+                { name: 'Starlink-1008', type: 'starlink', color: 0xffaa00 },
+                { name: 'NOAA-20', type: 'research', color: 0x3366ff },
+                { name: 'USA-326', type: 'military', color: 0xff3366 },
+                { name: 'Intelsat 35e', type: 'commercial', color: 0x00ff88 },
+                { name: 'Landsat 9', type: 'research', color: 0x3366ff },
+                { name: 'GOES-17', type: 'commercial', color: 0x00ff88 },
+            ];
+            
+            satelliteData.forEach((sat, index) => {
+                const angle = (index / satelliteData.length) * Math.PI * 2;
+                const altitude = 1.1 + Math.random() * 0.3;
+                
+                const geometry = new THREE.SphereGeometry(0.01, 16, 16);
+                const material = new THREE.MeshBasicMaterial({ color: sat.color });
+                const satMesh = new THREE.Mesh(geometry, material);
+                
+                satMesh.position.x = Math.cos(angle) * altitude;
+                satMesh.position.y = (Math.random() - 0.5) * 0.3;
+                satMesh.position.z = Math.sin(angle) * altitude;
+                
+                satMesh.userData = {
+                    name: sat.name,
+                    type: sat.type,
+                    angle: angle,
+                    altitude: altitude,
+                    speed: 0.001 + Math.random() * 0.002
+                };
+                
+                scene.add(satMesh);
+                satellites.push(satMesh);
+                
+                // Orbit line
+                const orbitGeometry = new THREE.BufferGeometry();
+                const orbitMaterial = new THREE.LineBasicMaterial({ 
+                    color: sat.color, 
+                    transparent: true, 
+                    opacity: 0.3 
+                });
+                
+                const orbitPoints = [];
+                for (let i = 0; i <= 64; i++) {
+                    const theta = (i / 64) * Math.PI * 2;
+                    orbitPoints.push(
+                        Math.cos(theta) * altitude,
+                        satMesh.position.y,
+                        Math.sin(theta) * altitude
+                    );
+                }
+                
+                orbitGeometry.setAttribute('position', new THREE.Float32BufferAttribute(orbitPoints, 3));
+                const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
+                scene.add(orbit);
+            });
+            
+            document.getElementById('total-sats').textContent = satellites.length;
+            document.getElementById('visible-sats').textContent = satellites.length;
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function filterSatellites(type) {
+            currentFilter = type;
+            
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            let visible = 0;
+            satellites.forEach(sat => {
+                if (type === 'all' || sat.userData.type === type) {
+                    sat.visible = true;
+                    visible++;
+                } else {
+                    sat.visible = false;
+                }
+            });
+            
+            document.getElementById('active-filter').textContent = type.charAt(0).toUpperCase() + type.slice(1);
+            document.getElementById('visible-sats').textContent = visible;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate Earth slowly
+            earth.rotation.y += 0.001;
+            
+            // Update satellites
+            satellites.forEach(sat => {
+                if (sat.visible) {
+                    sat.userData.angle += sat.userData.speed;
+                    sat.position.x = Math.cos(sat.userData.angle) * sat.userData.altitude;
+                    sat.position.z = Math.sin(sat.userData.angle) * sat.userData.altitude;
+                }
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        init();
+    </script>
+</body>
+</html>
